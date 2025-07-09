@@ -7,8 +7,8 @@ class NewsFetcher:
         self.marketaux_api_key = os.environ.get("MARKETAUX_API_KEY")
 
     def get_marketaux_news(self):
-        # Use current time minus 1 day (safe fallback)
-        timestamp = int(time.time()) - 86400
+        # Subtract 2 full days to ensure we're well within the past
+        timestamp = int(time.time()) - 2 * 86400
         url = (
             f"https://api.marketaux.com/v1/news/all?"
             f"api_token={self.marketaux_api_key}&language=en&limit=10&published_after={timestamp}"
@@ -18,5 +18,5 @@ class NewsFetcher:
         return response.json().get("data", [])
 
     def fetch_and_parse_news(self):
-        marketaux = self.get_marketaux_news()
-        return {"news": marketaux}
+        news_data = self.get_marketaux_news()
+        return {"news": news_data}
