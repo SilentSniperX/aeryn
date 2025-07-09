@@ -1,86 +1,82 @@
 import os
 import requests
 from datetime import datetime, timedelta
+from typing import List, Dict
 
-MARKETAUX_URL = "https://api.marketaux.com/v1/news/all"
-FINNHUB_URL = "https://finnhub.io/api/v1/news"
+class NewsFetcher:
+    def __init__(self):
+        self.sources = {
+            "marketaux": self.get_marketaux_news,
+            "finnhub": self.get_finnhub_news
+        }
 
-def get_marketaux_news():
-    base_url = "https://api.marketaux.com/v1/news/all"
-    current_time = int(time.time())
-    params = {
-        "api_token": os.getenv("MARKETAUX_API_KEY"),
-        "language": "en",
-        "limit": 10,
-        "published_after": current_time - 86400  # 24 hours ago
+    def fetch_all_news(self) -> List[Dict]:
+        all_news = []
 
-    resp = requests.get(base_url, params=params)
-    resp.raise_for_status()
+        for name, fetch_function in self.sources.items():
+            try:
+                news_items = fetch_function()
+                all_news.extend(news_items)
+            except Exception as e:
+                print(f"Error fetching news from {name}: {e}")
 
-    news_items = resp.json().get("data", [])
-    results = []
-    for item in news_items:
-        results.append({
-            "title": item.get("title"),
-            "url": item.get("url"),
-            "published": item.get("published_at"),
-            "score": 0,
-            "tags": item.get("tickers", [])
-        })
+        return sorted(all_news, key=lambda x: x["published"], reverse=True)
 
-    return results
-    })
-    resp.raise_for_status()
-    return resp.json().get("data", [])
+    def get_marketaux_news(self) -> List[Dict]:
+        api_key = os.getenv("MARKETAUX_API_KEY")
+        if not api_key:
+            raise ValueError("MARKETAUX_API_KEY is not set.")
 
-def get_finnhub_news(limit=10):
-    resp = requests.get(FINNHUB_URL, params={
-        "category": "general",
-        "token": os.getenv("FINNHUB_API_KEY")
-    })
-    resp.raise_for_status()
-    return resp.json()[:limit]
+        url = "https://api.marketaux.com/v1/news/all"
+        params = {
+            "api_token": api_key,
+            "language": "en",
+            "limit": 10,
+            "published_after": int((datetime.utcnow() - timedelta(hours=1)).timestamp())
+        }
 
-def analyze_sentiment(headline: str):
-    l = headline.lower()
-    score = 0
-    tags = []
-    if any(x in l for x in ["fed", "federal reserve"]):
-        score -= 2
-        tags.append("HIGH_ALERT")
-    if any(x in l for x in ["earnings beat", "guidance"]):
-        score += 2
-        tags.append("BULLISH")
-    if any(x in l for x in ["layoff", "missed earnings"]):
-        score -= 2
-        tags.append("BEARISH")
-    return score, tags
+        response = requests.get(url, params=params)
+        response.raise_for_status()
 
-def fetch_and_parse_news():
-    mat = get_marketaux_news()
-    fhb = get_finnhub_news()
-    items = []
-    seen = set()
+        articles = response.json().get("data", [])
+        return [
+            {
+                "title": a.get("title"),
+                "url": a.get("url"),
+                "published": a.get("published_at", ""),
+                "score": a.get("overall_sentiment_score", 0),
+                "tags": a.get("entities", [])
+            }
+            for a in articles
+        ]
 
-    for article in mat + fhb:
-        title = article.get("title")
-        url = article.get("url") or article.get("newsUrl")
-        if not title or not url:
-            continue
-        if url in seen:
-            continue
-        seen.add(url)
+    def get_finnhub_news(self) -> List[Dict]:
+        api_key = os.getenv("FINNHUB_API_KEY")
+        if not api_key:
+            raise ValueError("FINNHUB_API_KEY is not set.")
 
-        score, tags = analyze_sentiment(title)
-        items.append({
-            "title": title,
-            "url": url,
-            "published": article.get("published_at") or article.get("datetime"),
-            "score": score,
-            "tags": tags
-        })
+        url = "https://finnhub.io/api/v1/news"
+        params = {
+            "category": "general",
+            "token": api_key
+        }
 
-    return items
+        response = requests.get(url, params=params)
+        response.raise_for_status()
 
-if __name__ == "__main__":
-    print(fetch_and_parse_news())
+        articles = response.json()
+        return [
+            {
+                "title": a.get("headline"),
+                "url": a.get("url"),
+                "published": a.get("datetime"),
+                "score": a.get("related", ""),
+                "tags": []
+            }
+            for a in articles
+        ]
+
+def fetch_and_parse_news() -> Dict[str, List[Dict]]:
+    fetcher = NewsFetcher()
+    news = fetcher.fetch_all_news()
+    return {"news": news}
