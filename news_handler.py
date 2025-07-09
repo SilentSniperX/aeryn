@@ -1,25 +1,49 @@
-import os, requests
+import os
+import requests
 from datetime import datetime, timedelta
 
-def fetch_news():
-    key = os.getenv("NEWSAPI_KEY")
-    url = "https://newsapi.org/v2/top-headlines"
-    params = {
-        "language": "en",
-        "pageSize": 10,
-        "apiKey": key
+def fetch_and_parse_news():
+    news_data = {
+        "finnhub_news": [],
+        "newsapi": []
     }
+
+    # 📈 Finnhub
     try:
-        resp = requests.get(url, params=params)
-        resp.raise_for_status()
-        return resp.json().get("articles", [])
+        finnhub_key = os.getenv("FINNHUB_API_KEY")
+        finnhub_url = "https://finnhub.io/api/v1/news"
+        params = {"category": "top"}  # you can customize category
+        headers = {"X-Finnhub-Key": finnhub_key}
+        r = requests.get(finnhub_url, params=params, headers=headers)
+        r.raise_for_status()
+        news_data["finnhub_news"] = r.json()
     except Exception as e:
-        return [{"error": str(e)}]
+        news_data["finnhub_news"] = [{"error": str(e)}]
 
-from fastapi import APIRouter
-router = APIRouter()
+    # 📰 NewsAPI (top US business headlines)
+    try:
+        api_key = os.getenv("NEWSAPI_API_KEY")
+        url = "https://newsapi.org/v2/top-headlines"
+        params = {
+            "country": "us",
+            "category": "business",
+            "apiKey": api_key,
+            "pageSize": 10
+        }
+        r = requests.get(url, params=params)
+        r.raise_for_status()
+        articles = r.json().get("articles", [])
+        news_data["newsapi"] = [
+            {
+                "source": a.get("source", {}).get("name"),
+                "title": a.get("title"),
+                "url": a.get("url"),
+                "image": a.get("urlToImage"),
+                "summary": a.get("description")
+            }
+            for a in articles
+        ]
+    except Exception as e:
+        news_data["newsapi"] = [{"error": str(e)}]
 
-@router.get("/news")
-def news_handler():
-    articles = fetch_news()
-    return {"news": articles}
+    return news_data
