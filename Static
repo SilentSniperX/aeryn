@@ -1,0 +1,14 @@
+/your-project-root
+│
+├── src/
+│   ├── main.py
+│   └── news_handler.py
+│
+├── templates/
+│   └── news.html
+│
+├── static/
+│   └── (optional: CSS, JS, images later)
+│
+├── requirements.txt
+└── README.md
