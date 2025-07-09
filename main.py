@@ -1,14 +1,8 @@
 from fastapi import FastAPI
-from news_handler import NewsFetcher
+from news_handler import fetch_and_parse_news
 
 app = FastAPI()
-news_fetcher = NewsFetcher()
-
-@app.get("/")
-def read_root():
-    return {"message": "Aeryn is live, watching the markets."}
 
 @app.get("/news")
-async def get_news():
-    data = news_fetcher.fetch_and_parse_news()
-    return data
+def get_news():
+    return {"news": fetch_and_parse_news()}
