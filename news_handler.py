@@ -13,7 +13,6 @@ def get_marketaux_news():
         "language": "en",
         "limit": 10,
         "published_after": current_time - 86400  # 24 hours ago
-    }
 
     resp = requests.get(base_url, params=params)
     resp.raise_for_status()
