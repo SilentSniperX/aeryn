@@ -10,8 +10,9 @@ def get_marketaux_news(limit=10):
         "api_token": os.getenv("MARKETAUX_API_KEY"),
         "language": "en",
         "limit": limit,
-        "published_after": (datetime.utcnow() - timedelta(hours=6)).isoformat()
+        "published_after": int((datetime.utcnow() - timedelta(hours=1)).timestamp())
     })
+    resp.raise_for_status()
     return resp.json().get("data", [])
 
 def get_finnhub_news(limit=10):
@@ -19,37 +20,49 @@ def get_finnhub_news(limit=10):
         "category": "general",
         "token": os.getenv("FINNHUB_API_KEY")
     })
-    data = resp.json()
-    return data if isinstance(data, list) else []
+    resp.raise_for_status()
+    return resp.json()[:limit]
 
-def analyze_sentiment(headline):
+def analyze_sentiment(headline: str):
     l = headline.lower()
     score = 0
-    alerts = []
-    if any(x in l for x in ["fed", "federal reserve", "interest rate", "inflation"]):
+    tags = []
+    if any(x in l for x in ["fed", "federal reserve"]):
         score -= 2
-        alerts.append("HIGH_ALERT")
-    if any(x in l for x in ["earnings beat", "guidance raised", "record revenue"]):
+        tags.append("HIGH_ALERT")
+    if any(x in l for x in ["earnings beat", "guidance"]):
         score += 2
-        alerts.append("BULLISH")
-    if any(x in l for x in ["layoff", "missed earnings", "profit warning"]):
+        tags.append("BULLISH")
+    if any(x in l for x in ["layoff", "missed earnings"]):
         score -= 2
-        alerts.append("BEARISH")
-    return score, alerts
+        tags.append("BEARISH")
+    return score, tags
 
 def fetch_and_parse_news():
+    mat = get_marketaux_news()
+    fhb = get_finnhub_news()
     items = []
-    all_articles = get_marketaux_news() + get_finnhub_news()
-    for article in all_articles:
-        url = article.get("url") or article.get("headline", "")
-        title = article.get("title") or article.get("headline", "")
-        ts = article.get("published_at") or article.get("datetime", "")
+    seen = set()
+
+    for article in mat + fhb:
+        title = article.get("title")
+        url = article.get("url") or article.get("newsUrl")
+        if not title or not url:
+            continue
+        if url in seen:
+            continue
+        seen.add(url)
+
         score, tags = analyze_sentiment(title)
         items.append({
             "title": title,
             "url": url,
-            "published": ts,
+            "published": article.get("published_at") or article.get("datetime"),
             "score": score,
             "tags": tags
         })
+
     return items
+
+if __name__ == "__main__":
+    print(fetch_and_parse_news())
