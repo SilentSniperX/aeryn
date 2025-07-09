@@ -1,28 +1,21 @@
 import os
 import requests
 from datetime import datetime, timedelta
-from fastapi import APIRouter
 
-router = APIRouter()
+def fetch_and_parse_news():
+    finnhub_key = os.getenv("FINNHUB_API_KEY")
+    if not finnhub_key:
+        return {"finnhub_news": [{"error": "Missing FINNHUB_API_KEY"}]}
 
-@router.get("/news")
-def fetch_finnhub_news():
-    finnhub_api_key = os.getenv("FINNHUB_API_KEY")
-
-    # Get timestamp for 24 hours ago
-    published_after = int((datetime.utcnow() - timedelta(days=1)).timestamp())
-
-    url = f"https://finnhub.io/api/v1/news?category=top&token={finnhub_api_key}"
-
-    news_data = {
-        "finnhub_news": []
-    }
+    published_after = int((datetime.utcnow() - timedelta(hours=24)).timestamp())
+    url = (
+        "https://finnhub.io/api/v1/news?"
+        f"category=top&token={finnhub_key}"
+    )
 
     try:
-        response = requests.get(url)
-        response.raise_for_status()
-        news_data["finnhub_news"] = response.json()
+        resp = requests.get(url)
+        resp.raise_for_status()
+        return {"finnhub_news": resp.json()}
     except Exception as e:
-        news_data["finnhub_news"] = [{"error": str(e)}]
-
-    return news_data
+        return {"finnhub_news": [{"error": str(e)}]}
