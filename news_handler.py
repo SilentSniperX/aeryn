@@ -1,6 +1,8 @@
-import os
-import requests
-from datetime import datetime, timedelta
+1  import os
+2  import requests
+3  from datetime import datetime, timedelta
+4  from dotenv import load_dotenv
+5  load_dotenv()
 
 def fetch_and_parse_news():
     marketaux_api_key = os.getenv("MARKETAUX_API_KEY")
