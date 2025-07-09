@@ -1,51 +1,45 @@
 import os
 import requests
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
 
-class NewsFetcher:
-    def __init__(self):
-        self.marketaux_api_key = os.getenv("MARKETAUX_API_KEY")
-        self.finnhub_api_key = os.getenv("FINNHUB_API_KEY")
+load_dotenv()
 
-    def get_marketaux_news(self):
-        if not self.marketaux_api_key:
-            return {"news": [{"error": "MARKETAUX_API_KEY not found"}]}
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
+MARKETAUX_API_KEY = os.getenv("MARKETAUX_API_KEY")
 
-        url = "https://api.marketaux.com/v1/news/all"
-        published_after = int((datetime.utcnow() - timedelta(days=1)).timestamp())
-        params = {
-            "api_token": self.marketaux_api_key,
-            "language": "en",
-            "limit": 10,
-            "published_after": published_after
-        }
+def get_finnhub_news():
+    if not FINNHUB_API_KEY:
+        return {"error": "FINNHUB_API_KEY not set"}
+    
+    url = "https://finnhub.io/api/v1/news?category=general&token=" + FINNHUB_API_KEY
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        return {"error": str(e)}
 
-        try:
-            response = requests.get(url, params=params)
-            response.raise_for_status()
-            data = response.json()
-            return {"news": data.get("data", [])}
-        except requests.exceptions.HTTPError as e:
-            return {"news": [{"error": f"{str(e)}"}]}
-        except Exception as e:
-            return {"news": [{"error": f"Unexpected error: {str(e)}"}]}
+def get_marketaux_news():
+    if not MARKETAUX_API_KEY:
+        return {"error": "MARKETAUX_API_KEY not set"}
 
-    def get_finnhub_news(self):
-        if not self.finnhub_api_key:
-            return {"news": [{"error": "FINNHUB_API_KEY not found"}]}
+    # Get news from the last 24 hours
+    published_after = int((datetime.utcnow() - timedelta(days=1)).timestamp())
 
-        url = "https://finnhub.io/api/v1/news"
-        params = {
-            "category": "general",
-            "token": self.finnhub_api_key
-        }
+    url = f"https://api.marketaux.com/v1/news/all?api_token={MARKETAUX_API_KEY}&language=en&limit=10&published_after={published_after}"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json().get("data", [])
+    except Exception as e:
+        return {"error": str(e)}
 
-        try:
-            response = requests.get(url, params=params)
-            response.raise_for_status()
-            data = response.json()
-            return {"news": data[:10]}  # Get the latest 10 articles
-        except requests.exceptions.HTTPError as e:
-            return {"news": [{"error": f"{str(e)}"}]}
-        except Exception as e:
-            return {"news": [{"error": f"Unexpected error: {str(e)}"}]}
+def fetch_and_parse_news():
+    finnhub_news = get_finnhub_news()
+    marketaux_news = get_marketaux_news()
+
+    return {
+        "finnhub_news": finnhub_news,
+        "marketaux_news": marketaux_news,
+    }
