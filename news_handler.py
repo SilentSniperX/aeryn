@@ -1,21 +1,30 @@
 import os
 import requests
-from datetime import datetime, timedelta
+from fastapi import APIRouter, Request
+from fastapi.responses import HTMLResponse
+from fastapi.templating import Jinja2Templates
 
-def fetch_and_parse_news():
-    finnhub_key = os.getenv("FINNHUB_API_KEY")
-    if not finnhub_key:
-        return {"finnhub_news": [{"error": "Missing FINNHUB_API_KEY"}]}
+router = APIRouter()
+templates = Jinja2Templates(directory="templates")
 
-    published_after = int((datetime.utcnow() - timedelta(hours=24)).timestamp())
-    url = (
-        "https://finnhub.io/api/v1/news?"
-        f"category=top&token={finnhub_key}"
-    )
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
+FINNHUB_URL = "https://finnhub.io/api/v1/news?category=general"
 
-    try:
-        resp = requests.get(url)
-        resp.raise_for_status()
-        return {"finnhub_news": resp.json()}
-    except Exception as e:
-        return {"finnhub_news": [{"error": str(e)}]}
+@router.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    news_data = {}
+
+    if FINNHUB_API_KEY:
+        try:
+            response = requests.get(
+                FINNHUB_URL,
+                headers={"X-Finnhub-Token": FINNHUB_API_KEY}
+            )
+            response.raise_for_status()
+            news_data["finnhub_news"] = response.json()
+        except requests.RequestException as e:
+            news_data["finnhub_news"] = [{"error": str(e)}]
+    else:
+        news_data["finnhub_news"] = [{"error": "Missing FINNHUB_API_KEY"}]
+
+    return templates.TemplateResponse("news.html", {"request": request, **news_data})
