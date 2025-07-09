@@ -6,20 +6,23 @@ from fastapi import APIRouter
 router = APIRouter()
 
 @router.get("/news")
-def get_news():
-    api_key = os.getenv("FINNHUB_API_KEY")
-    if not api_key:
-        return {"error": "Missing FINNHUB_API_KEY"}
+def fetch_finnhub_news():
+    finnhub_api_key = os.getenv("FINNHUB_API_KEY")
 
-    url = "https://finnhub.io/api/v1/news"
-    params = {
-        "category": "general",  # other options: forex, crypto, merger
-        "token": api_key
+    # Get timestamp for 24 hours ago
+    published_after = int((datetime.utcnow() - timedelta(days=1)).timestamp())
+
+    url = f"https://finnhub.io/api/v1/news?category=top&token={finnhub_api_key}"
+
+    news_data = {
+        "finnhub_news": []
     }
 
     try:
-        resp = requests.get(url, params=params)
-        resp.raise_for_status()
-        return {"finnhub_news": resp.json()}
-    except requests.HTTPError as e:
-        return {"finnhub_news": [{"error": str(e)}]}
+        response = requests.get(url)
+        response.raise_for_status()
+        news_data["finnhub_news"] = response.json()
+    except Exception as e:
+        news_data["finnhub_news"] = [{"error": str(e)}]
+
+    return news_data
