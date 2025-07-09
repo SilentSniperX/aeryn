@@ -1,45 +1,38 @@
 import os
 import requests
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
-
-load_dotenv()
-
-FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY")
-MARKETAUX_API_KEY = os.getenv("MARKETAUX_API_KEY")
-
-def get_finnhub_news():
-    if not FINNHUB_API_KEY:
-        return {"error": "FINNHUB_API_KEY not set"}
-    
-    url = "https://finnhub.io/api/v1/news?category=general&token=" + FINNHUB_API_KEY
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        return {"error": str(e)}
-
-def get_marketaux_news():
-    if not MARKETAUX_API_KEY:
-        return {"error": "MARKETAUX_API_KEY not set"}
-
-    # Get news from the last 24 hours
-    published_after = int((datetime.utcnow() - timedelta(days=1)).timestamp())
-
-    url = f"https://api.marketaux.com/v1/news/all?api_token={MARKETAUX_API_KEY}&language=en&limit=10&published_after={published_after}"
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json().get("data", [])
-    except Exception as e:
-        return {"error": str(e)}
 
 def fetch_and_parse_news():
-    finnhub_news = get_finnhub_news()
-    marketaux_news = get_marketaux_news()
+    marketaux_api_key = os.getenv("MARKETAUX_API_KEY")
+    finnhub_api_key = os.getenv("FINNHUB_API_KEY")
 
-    return {
-        "finnhub_news": finnhub_news,
-        "marketaux_news": marketaux_news,
+    # Get timestamp for 24 hours ago
+    published_after = int((datetime.utcnow() - timedelta(days=1)).timestamp())
+
+    marketaux_url = f"https://api.marketaux.com/v1/news/all?api_token={marketaux_api_key}&language=en&limit=10&published_after={published_after}"
+    finnhub_url = f"https://finnhub.io/api/v1/news?category=general&token={finnhub_api_key}"
+
+    news_data = {
+        "marketaux_news": [],
+        "finnhub_news": []
     }
+
+    # Fetch Marketaux news
+    try:
+        response = requests.get(marketaux_url)
+        response.raise_for_status()
+        marketaux_results = response.json().get("data", [])
+        news_data["marketaux_news"] = marketaux_results
+    except Exception as e:
+        news_data["marketaux_news"] = [{"error": str(e)}]
+
+    # Fetch Finnhub news
+    try:
+        response = requests.get(finnhub_url)
+        response.raise_for_status()
+        finnhub_results = response.json()
+        news_data["finnhub_news"] = finnhub_results
+    except Exception as e:
+        news_data["finnhub_news"] = [{"error": str(e)}]
+
+    return news_data
