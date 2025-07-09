@@ -1,8 +1,15 @@
 from fastapi import FastAPI
-from news_handler import fetch_and_parse_news
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from fastapi.requests import Request
+
+from news_handler import router as news_router
 
 app = FastAPI()
 
-@app.get("/news")
-async def get_news():
-    return fetch_and_parse_news()
+# Static + Templates setup
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+# Routes
+app.include_router(news_router)
