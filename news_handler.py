@@ -1,50 +1,21 @@
 import os
 import requests
-from datetime import datetime, timedelta
-from typing import List, Dict
-
+import time
 
 class NewsFetcher:
     def __init__(self):
-        pass
+        self.marketaux_api_key = os.environ.get("MARKETAUX_API_KEY")
 
-    def get_marketaux_news(self) -> List[Dict]:
-        api_key = os.getenv("MARKETAUX_API_KEY")
-        if not api_key:
-            raise ValueError("MARKETAUX_API_KEY is not set.")
-
-        url = "https://api.marketaux.com/v1/news/all"
-        published_after = (datetime.utcnow() - timedelta(hours=1)).isoformat() + "Z"  # ISO 8601
-
-        params = {
-            "api_token": api_key,
-            "language": "en",
-            "limit": 10,
-            "published_after": published_after
-        }
-
-        response = requests.get(url, params=params)
+    def get_marketaux_news(self):
+        now = int(time.time())
+        url = (
+            f"https://api.marketaux.com/v1/news/all?"
+            f"api_token={self.marketaux_api_key}&language=en&limit=10&published_after={now - 86400}"
+        )
+        response = requests.get(url)
         response.raise_for_status()
+        return response.json().get("data", [])
 
-        articles = response.json().get("data", [])
-        return [
-            {
-                "title": a.get("title"),
-                "url": a.get("url"),
-                "published": a.get("published_at", ""),
-                "score": a.get("overall_sentiment_score", 0),
-                "tags": a.get("entities", [])
-            }
-            for a in articles
-        ]
-
-    def fetch_and_parse_news(self) -> Dict[str, List[Dict]]:
-        try:
-            marketaux_news = self.get_marketaux_news()
-        except Exception as e:
-            print(f"Error fetching news from marketaux: {e}")
-            marketaux_news = []
-
-        return {
-            "news": marketaux_news
-        }
+    def fetch_and_parse_news(self):
+        marketaux = self.get_marketaux_news()
+        return {"news": marketaux}
