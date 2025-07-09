@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Top News</title>
+</head>
+<body>
+  <h1>Top News from Finnhub</h1>
+  {% if finnhub_news %}
+    <ul>
+      {% for item in finnhub_news %}
+        <li>
+          <a href="{{ item.url }}" target="_blank">{{ item.headline }}</a><br>
+          <small>{{ item.source }} | {{ item.datetime }}</small><br>
+          <p>{{ item.summary }}</p>
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p>No news data available.</p>
+  {% endif %}
+</body>
+</html>
