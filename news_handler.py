@@ -7,10 +7,11 @@ class NewsFetcher:
         self.marketaux_api_key = os.environ.get("MARKETAUX_API_KEY")
 
     def get_marketaux_news(self):
-        now = int(time.time())
+        # Use current time minus 1 day (safe fallback)
+        timestamp = int(time.time()) - 86400
         url = (
             f"https://api.marketaux.com/v1/news/all?"
-            f"api_token={self.marketaux_api_key}&language=en&limit=10&published_after={now - 86400}"
+            f"api_token={self.marketaux_api_key}&language=en&limit=10&published_after={timestamp}"
         )
         response = requests.get(url)
         response.raise_for_status()
