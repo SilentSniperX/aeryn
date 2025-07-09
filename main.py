@@ -1,6 +1,8 @@
 from fastapi import FastAPI
-from news_handler import router as news_router
+from news_handler import fetch_and_parse_news
 
 app = FastAPI()
 
-app.include_router(news_router)
+@app.get("/news")
+async def get_news():
+    return fetch_and_parse_news()
