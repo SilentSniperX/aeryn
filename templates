@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Market News</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>Latest Market News</h1>
+
+    {% if news %}
+        {% for source, articles in news.items() %}
+            <section>
+                <h2>{{ source | upper }}</h2>
+                {% for article in articles %}
+                    <div class="article">
+                        <img src="{{ article.image }}" alt="News image" />
+                        <div>
+                            <h3><a href="{{ article.url }}" target="_blank">{{ article.headline }}</a></h3>
+                            <p class="meta">{{ article.source }} | {{ article.datetime }}</p>
+                            <p>{{ article.summary }}</p>
+                        </div>
+                    </div>
+                {% endfor %}
+            </section>
+        {% endfor %}
+    {% else %}
+        <p>No news available at this time.</p>
+    {% endif %}
+</body>
+</html>
