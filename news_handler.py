@@ -5,12 +5,31 @@ from datetime import datetime, timedelta
 MARKETAUX_URL = "https://api.marketaux.com/v1/news/all"
 FINNHUB_URL = "https://finnhub.io/api/v1/news"
 
-def get_marketaux_news(limit=10):
-    resp = requests.get(MARKETAUX_URL, params={
+def get_marketaux_news():
+    base_url = "https://api.marketaux.com/v1/news/all"
+    current_time = int(time.time())
+    params = {
         "api_token": os.getenv("MARKETAUX_API_KEY"),
         "language": "en",
-        "limit": limit,
-        "published_after": int((datetime.utcnow() - timedelta(hours=1)).timestamp())
+        "limit": 10,
+        "published_after": current_time - 86400  # 24 hours ago
+    }
+
+    resp = requests.get(base_url, params=params)
+    resp.raise_for_status()
+
+    news_items = resp.json().get("data", [])
+    results = []
+    for item in news_items:
+        results.append({
+            "title": item.get("title"),
+            "url": item.get("url"),
+            "published": item.get("published_at"),
+            "score": 0,
+            "tags": item.get("tickers", [])
+        })
+
+    return results
     })
     resp.raise_for_status()
     return resp.json().get("data", [])
