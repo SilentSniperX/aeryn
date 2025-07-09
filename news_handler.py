@@ -1,46 +1,37 @@
-import os
 import requests
+import os
 from datetime import datetime, timedelta
-from fastapi import APIRouter
 from dotenv import load_dotenv
 
 load_dotenv()
 
-router = APIRouter()
+class NewsFetcher:
+    def __init__(self):
+        self.markettaux_token = os.getenv("MARKETAUX_API_KEY")
+        self.api_url = "https://api.marketaux.com/v1/news/all"
 
-MARKETAUX_API_TOKEN = os.getenv("MARKETAUX_API_TOKEN")
+    def get_marketaux_news(self):
+        published_after = int((datetime.utcnow() - timedelta(days=1)).timestamp())
+        params = {
+            "api_token": self.markettaux_token,
+            "language": "en",
+            "limit": 10,
+            "published_after": published_after
+        }
+        response = requests.get(self.api_url, params=params)
+        response.raise_for_status()
+        return response.json().get("data", [])
 
-def get_marketaux_news():
-    now = datetime.utcnow()
-    one_day_ago = now - timedelta(days=1)
-    published_after = int(one_day_ago.timestamp())
-
-    url = (
-        f"https://api.marketaux.com/v1/news/all?"
-        f"api_token={MARKETAUX_API_TOKEN}"
-        f"&language=en&limit=10"
-        f"&published_after={published_after}"
-    )
-
-    response = requests.get(url)
-    response.raise_for_status()
-    return response.json().get("data", [])
-
-@router.get("/news")
 def fetch_and_parse_news():
-    try:
-        news_data = get_marketaux_news()
-        filtered = [
-            {
-                "title": item.get("title"),
-                "source": item.get("source"),
-                "published_at": item.get("published_at"),
-                "url": item.get("url"),
-                "description": item.get("description") or item.get("snippet", "")
-            }
-            for item in news_data
-            if item.get("title") and item.get("published_at")
-        ]
-        return {"news": filtered}
-    except Exception as e:
-        return {"error": str(e)}
+    fetcher = NewsFetcher()
+    raw_news = fetcher.get_marketaux_news()
+    parsed_news = []
+    for article in raw_news:
+        parsed_news.append({
+            "title": article.get("title"),
+            "description": article.get("description"),
+            "url": article.get("url"),
+            "published_at": article.get("published_at"),
+            "source": article.get("source")
+        })
+    return parsed_news
